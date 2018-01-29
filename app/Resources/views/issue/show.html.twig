@@ -1,0 +1,107 @@
+{% extends '::base.html.twig' %}
+
+{% block title %}
+    {{ parent() }} - issue
+{% endblock %}
+
+{% block body %}
+
+    <div id="top" class="row">
+        <div class="page-header">
+            <h2>Issue details <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <p><strong>Id</strong></p>
+            <p>
+                {{ issue.id }}
+            </p>
+
+        </div>
+        <div class="col-md-6">
+            <p><strong>Description</strong></p>
+            <p>
+                {{ issue.description }}
+            </p>
+
+        </div>
+        <div class="col-md-6">
+            <p><strong>Begin</strong></p>
+            <p>
+                {% if issue.begin %}{{ issue.begin|date('Y-m-d H:i:s') }}{% endif %}
+            </p>
+
+        </div>
+        <div class="col-md-6">
+            <p><strong>End</strong></p>
+            <p>
+                {% if issue.end %}{{ issue.end|date('Y-m-d H:i:s') }}{% endif %}
+            </p>
+
+        </div>
+        <div class="col-md-6">
+            <p><strong>Totaltime {% if breaks %}(excluding breaks){%endif%}</strong></p>
+            <p>
+                {% if issue.totaltime %}{{ issue.totaltime|date('H:i:s') }}{% endif %}
+            </p>
+
+        </div>
+
+
+
+
+    </div>
+    {% if breaks %}
+        <div class="row">
+
+            <div class="col-md-6">
+                <p><strong>Breaks</strong></p>
+                <table class="table table-striped table-hover table-bordered" cellspacing="0" cellpadding="0">
+                    <thead>
+                        <tr>
+                            <th>
+                                Begin    
+                            </th>
+                            <th>
+                                End
+                            </th>
+                            <th>
+                                Total Time
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for break in breaks %}
+                            {% set difference = date(break.end).diff(date(break.begin)) %}
+                            <tr>
+                                <td>{{ break.begin|date('Y-m-d H:i:s')  }}</td>
+                                <td>{{ break.end|date('Y-m-d H:i:s')  }}</td>
+                                <td>{{ difference|date("%hh %im %ss") }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Issue has been realized without any breaks.</strong></p>
+            </div>
+        </div>
+    {% endif %}
+    
+    <hr/>
+
+    <div class="form-group">
+        <a class="btn btn-default" href="{{ path('issue') }}">
+            <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
+            Back to list
+        </a>
+    </div>
+
+
+{% endblock %}
+

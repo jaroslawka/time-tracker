@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+
+    {% if state== constant('AppBundle\\Model\\IssueState::STATE_IN_PROGRESS') %}
+        <div class="alert alert-success">
+             <h4>Task in progress: <span id="timer" class="label label-success"></span></h4>
+        </div>
+    {% elseif state==constant('AppBundle\\Model\\IssueState::STATE_PAUSED') %}
+        <div class="alert alert-info">
+            <h4>Task is paused.</h4>
+        </div>
+    {% endif %}
+    {% if error==constant('AppBundle\\Model\\IssueState::ERROR_DESCRIPTION_NOT_FOUND') %}
+        <div class="alert alert-danger">
+            Description is empty.
+        </div>
+    {% endif %}
+    {% if error==constant('AppBundle\\Model\\IssueState::ERROR_NOT_FOUND') %}
+        <div class="alert alert-danger">
+            Fatal error. Issue not found.
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-lg-6">
+            <form action="{{ path('issue_post') }}" method="post" >
+                <div class="input-group">
+                    <input type="text" name="description" value="{{description}}" class="form-control" placeholder="What are you doing ?">
+                    <span class="input-group-btn">
+                        {% if not state %}
+                            <button type="submit" name="action" value="start" class="btn btn-success" type="button">Start</button>
+                        {% else %}
+                            {% if state==constant('AppBundle\\Model\\IssueState::STATE_IN_PROGRESS') %}
+                                <button type="submit" name="action" value="pause" class="btn btn-warning" type="button">Pause</button>
+                                <button type="submit" name="action" onclick="return confirm('Are you sure ?');" value="stop" class="btn btn-danger" type="button">Stop</button>
+                            {% else %}
+                                <button type="submit" name="action" value="continue" class="btn btn-info" type="button">Continue</button>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+
+                </div><!-- /input-group -->
+            </form>
+        </div><!-- /.col-lg-6 -->
+    </div><!-- /.row -->
+
+{% endblock %}
+
+{% block stylesheets %}
+    <style>
+    </style>    
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        // Count-Up Timer
+        var totalSeconds = parseInt('{{time}}');
+        function setTimer(totalSeconds) {
+            var hours = Math.floor(totalSeconds / 3600);
+            var minutes = Math.floor((totalSeconds - hours * 3600) / 60);
+            var seconds = totalSeconds - (hours * 3600 + minutes * 60);
+            document.getElementById("timer").innerHTML = hours + "h "
+                    + minutes + "m " + seconds + "s ";
+        }
+        setTimer(totalSeconds);
+        var x = setInterval(function () {
+            ++totalSeconds;
+            setTimer(totalSeconds);
+        }, 1000);
+    </script> 
+{% endblock %}    

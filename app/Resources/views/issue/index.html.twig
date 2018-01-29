@@ -1,0 +1,158 @@
+{% extends '::base.html.twig' %}
+
+{% block title %}
+    {{ parent() }} - issue index
+{% endblock %}
+
+{% block body %}
+
+
+    <div class="row">
+        <!-- FILTERING -->
+        <div class="col-md-12">
+            <div  id="filters" class="collapse">
+
+                <form class="well" action="{{ path('issue') }}" method="get" >
+                    <div class="row">
+
+                        <div class="col-md-6">{{ form_row(filterForm.id) }}</div>
+
+
+                        <div class="col-md-6">{{ form_row(filterForm.description) }}</div>
+
+
+                        <div class="col-md-6">{{ form_row(filterForm.begin) }}</div>
+
+
+                        <div class="col-md-6">{{ form_row(filterForm.end) }}</div>
+
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-warning" name="filter_action" value="filter"> <span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Filter</button>
+                                <button type="submit" class="btn btn-default" name="filter_action" value="reset"><span class="glyphicon glyphicon-minus" aria-hidden="true"></span> Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- END FILTERING -->
+
+
+        <div class="col-md-3 pull-left">
+
+            <!-- PAGE SIZE -->
+            <div class="pagination form-inline ">
+                <select class = "form-control"  onchange="window.location = this.value" >
+                    <option value='{{ path('issue', app.request.query.all|merge({'pcg_show': '10'})) }}' {% if app.request.get('pcg_show') == 10 %} selected {% endif %}>10</option>
+                    <option value='{{ path('issue', app.request.query.all|merge({'pcg_show': '20'})) }}' {% if app.request.get('pcg_show') == 20 %} selected {% endif %}>20</option>
+                    <option value='{{ path('issue', app.request.query.all|merge({'pcg_show': '50'})) }}' {% if app.request.get('pcg_show') == 50 %} selected {% endif %}>50</option>
+                    <option value='{{ path('issue', app.request.query.all|merge({'pcg_show': '100'})) }}' {% if app.request.get('pcg_show') == 100 %} selected {% endif %}>100</option>
+                    <option value='{{ path('issue', app.request.query.all|merge({'pcg_show': '500'})) }}' {% if app.request.get('pcg_show') == 500 %} selected {% endif %}>500</option>
+                </select>
+            </div>
+            <!-- END PAGE SIZE -->
+
+        </div>
+
+
+
+        <div class="col-md-2  pull-right">
+
+            <a class="btn btn-warning dropdown-toggle pull-right h3" data-toggle="collapse" data-target="#filters">
+                Filter
+                <span class="caret"></span>
+            </a>
+        </div>
+
+        <div class="col-md-1 pull-right">        
+            <a class="btn btn-info h3" href="/issue/export/csv">Export CSV</a>
+        </div>        
+
+        <div class="col-md-12">
+            {%- if form_errors(filterForm) %}
+            <div class="alert alert-block alert-error fade in form-errors">
+                {{ form_errors(filterForm) }}
+            </div>
+            {% endif %}
+            </div>
+
+        </div> <!-- /#top -->
+
+
+        <div class="row">
+            <div class="col-md-12">
+                {% for type, flashMessages in app.session.flashbag.all() %} 
+                    {% for flashMessage in flashMessages %}
+                        <div class="alert alert-{{ type }}">
+                            {{ flashMessage|raw }}
+                        </div>
+                    {% endfor %} 
+                {% endfor %} 
+            </div>
+        </div>
+
+
+        <div class="row">
+
+            <div class="table-responsive col-md-12">
+                <table class="table table-striped table-hover table-bordered" cellspacing="0" cellpadding="0">
+                    <thead>
+                        <tr>
+
+                            {% import "PetkoparaCrudGeneratorBundle::macros/th_sortable.html.twig" as macros %}
+                            <th>{{macros.th_sortable('id',app.request.get('pcg_sort_col'), app.request.get('pcg_sort_order') , 'issue')}}</th>
+                            <th>{{macros.th_sortable('description',app.request.get('pcg_sort_col'), app.request.get('pcg_sort_order') , 'issue')}}</th>
+                            <th>{{macros.th_sortable('begin',app.request.get('pcg_sort_col'), app.request.get('pcg_sort_order') , 'issue')}}</th>
+                            <th>{{macros.th_sortable('end',app.request.get('pcg_sort_col'), app.request.get('pcg_sort_order') , 'issue')}}</th>
+                            <th>{{macros.th_sortable('totaltime',app.request.get('pcg_sort_col'), app.request.get('pcg_sort_order') , 'issue')}}</th>
+
+
+                            <th width = "130px">List</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issues %}
+                            <tr>
+                                <td>{{ issue.id }}</td>
+                                <td>{{ issue.description }}</td>
+                                <td>{%- if issue.begin %}{{ issue.begin|date('Y-m-d H:i:s') }}{% endif %}</td>
+                                <td>{%- if issue.end %}{{ issue.end|date('Y-m-d H:i:s') }}{% endif %}</td>
+                                <td>{% if issue.totaltime %}{{ issue.totaltime|date('H:i:s') }}{% endif %}</td>
+
+                                <td class="actions">
+                                    <a title='Show' class="btn btn-info btn-sm" href="{{ path('issue_show', { 'id': issue.id }) }}">
+                                        <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+                                    </a>
+                                </td>
+
+
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+
+            </div>
+        </div> <!-- /#list -->
+
+
+
+
+        <div class="row">
+            <div class="col-md-4 pull-left">
+            </div>
+
+            <div class='col-md-3 pagination text-center'>
+                <p>{{totalOfRecordsString}}</p>
+            </div>
+
+            <div class="col-md-5 text-right">
+                {{ pagerHtml|raw }} 
+            </div>
+        </div> <!-- /#bottom -->
+
+
+
+        {% endblock %}
+

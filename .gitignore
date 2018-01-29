@@ -1,0 +1,12 @@
+/app/AppKernel.php
+/bin/
+/build/
+/vendor/
+/web/bundles/
+/var/
+/!var/cache/.gitkeep
+/!var/logs/.gitkeep
+/!var/sessions/.gitkeep
+/composer.lock
+/phpunit.xml
+/nbproject/
