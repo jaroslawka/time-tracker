@@ -9,5 +9,32 @@ namespace AppBundle\Repository;
  */
 class BreaksRepository extends \Doctrine\ORM\EntityRepository
 {
-    
+
+    /**
+     * 
+     * Get total breaks time
+     * 
+     * @param int $issueId
+     * @return type
+     */
+    public function getBreaksTimeTotal(int $issueId)
+    {
+        $manager = $this->getEntityManager();
+
+        $sql = "SELECT sum(UNIX_TIMESTAMP(end)-UNIX_TIMESTAMP(begin)) as breaks_total_time FROM breaks WHERE issue_id = :issueId";
+
+        $queryBuilder = $manager
+            ->getConnection()
+            ->prepare($sql)
+        ;
+        $queryBuilder->execute(array('issueId' => $issueId));
+
+        $result = $queryBuilder->fetch();
+
+        if (!empty($result['breaks_total_time'])) {
+            return $result['breaks_total_time'];
+        }
+
+        return null;
+    }
 }

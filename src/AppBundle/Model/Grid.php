@@ -4,7 +4,7 @@ namespace AppBundle\Model;
 use Doctrine\ORM\EntityManagerInterface;
 use AppBundle\Entity\Issue;
 use AppBundle\Entity\Breaks;
-use AppBundle\Helper\IssueHelper;
+use AppBundle\Helper\TimeHelper;
 
 /**
  * Grid Data Model
@@ -13,7 +13,7 @@ use AppBundle\Helper\IssueHelper;
 class Grid
 {
 
-    use IssueHelper;
+    use TimeHelper;
 
     public function prepareDateForCsv($data)
     {

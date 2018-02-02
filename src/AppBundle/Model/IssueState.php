@@ -3,12 +3,12 @@ namespace AppBundle\Model;
 
 use Doctrine\ORM\EntityManagerInterface;
 use AppBundle\Entity\Issue;
-use AppBundle\Entity\Breaks;
-use AppBundle\Helper\IssueHelper;
+use AppBundle\Helper\TimeHelper;
 
 class IssueState
 {
-    use IssueHelper;
+
+    use TimeHelper;
 
     const STATE_IN_PROGRESS = 1;
     const STATE_PAUSED = 2;
@@ -17,201 +17,85 @@ class IssueState
     const ERROR_DESCRIPTION_NOT_FOUND = 102;
 
     private $manager;
+    private $issueRepository;
+    private $issue;
+    private $userId;
+    private $time;
+    private $description;
+    private $state;
+    private $error;
 
-    public function __construct(EntityManagerInterface $manager)
+    public function __construct(EntityManagerInterface $manager, User $user)
     {
         $this->manager = $manager;
-    }
+        $this->userId = $user->getLoggedUserId();
 
-    /**
-     * Get Issue in progress
-     * @return object
-     */
-    public function getIssueInProgressOrPaused($userId)
-    {
-
-        try {
-            $queryBuilder = $this->manager->getRepository('AppBundle:Issue')->createQueryBuilder('e');
-            $result = $queryBuilder
-                ->where('e.userId = :userId ')
-                ->andWhere('e.state != :state')
-                ->setParameter('userId', $userId)
-                ->setParameter('state', self::STATE_END)
-                ->getQuery()
-                ->getSingleResult()
-            ;
-        } catch (\Exception $ex) {
-
-            return false;
-        }
-
-        return $result;
-    }
-
-    /**
-     * 
-     * Create new issue (state in progress)
-     * 
-     * @param string $description
-     * @return Issue|null
-     */
-    public function stateIssueStart(int $userId, string $description)
-    {
-
-        $dateTime = $this->getCurrentDateTIme();
-
-        try {
-            $issue = new Issue();
-            $issue->setState(self::STATE_IN_PROGRESS);
-            $issue->setUserId($userId);
-            $issue->setBegin($dateTime);
-            $issue->setDescription($description);
-            $this->manager->persist($issue);
-            $this->manager->flush();
-
-            return $issue;
-        } catch (\Exception $ex) {
-
-            return null;
+        $this->issueRepository = $manager->getRepository('AppBundle:Issue');
+        $this->issue = $this->issueRepository->getIssueInProgressOrPaused($this->userId);
+        if (!empty($this->issue)) {
+            $this->setDescription($this->issue->getDescription());
         }
     }
 
-    /**
-     * 
-     * Set state Paused
-     * 
-     * @param int $id
-     * @return Issue|null
-     */
-    public function stateIssuePause(int $id)
+    public function issueStart()
     {
-
-        $dateTime = $this->getCurrentDateTIme();
-
-        try {
-            $this->manager->getConnection()->beginTransaction();
-
-            $issue = $this->manager->getRepository('AppBundle:Issue')->find($id);
-            $issue->setState(self::STATE_PAUSED);
-            $this->manager->flush();
-
-            $break = new Breaks();
-            $break->setIssueId($issue->getId());
-            $break->setBegin($dateTime);
-            $this->manager->persist($break);
-            $this->manager->flush();
-
-            $this->manager->getConnection()->commit();
-
-            return $issue;
-        } catch (\Exception $ex) {
-
-            $this->manager->getConnection()->rollBack();
-
-            return null;
-        }
-    }
-
-    /**
-     * Set state In Progress (Continuation)
-     * 
-     * @param int $id
-     * @return Issue|null
-     */
-    public function stateIssueContinue(int $id)
-    {
-
-        $dateTime = $this->getCurrentDateTIme();
-
-        try {
-
-            $this->manager->getConnection()->beginTransaction();
-
-            $issue = $this->manager->getRepository('AppBundle:Issue')->find($id);
-            $issue->setState(self::STATE_IN_PROGRESS);
-            $this->manager->flush();
-
-            $queryBuilder = $this->manager->createQueryBuilder();
-
-            $query = $queryBuilder
-                ->update('AppBundle:Breaks', 'b')
-                ->set('b.end', ':endTime')
-                ->where('b.issueId = :issueId')
-                ->andWhere($queryBuilder->expr()->isNull('b.end'))
-                ->setParameter('issueId', $id)
-                ->setParameter('endTime', $dateTime)
-                ->getQuery()
-            ;
-            $result = $query->execute();
-
-            if (!$result) {
-                throw new \Doctrine\ORM\ORMException;
+        if (empty($this->issue)) {
+            $description = $this->getDescription() ?? '';
+            $this->issue = $this->issueRepository->stateIssueStart($this->userId, $description);
+            if (!empty($issue)) {
+                $timeBegin = $issue->getBegin()->getTimestamp();
+                if ($timeBegin) {
+                    $time = $this->getCurrentDateTime()->getTimestamp() - $timeBegin;
+                    $this->setState(IssueState::STATE_IN_PROGRESS);
+                    $this->setTime($time);
+                }
             }
+        }
+    }
 
-            $this->manager->getConnection()->commit();
+    public function issuePause()
+    {
+        $state = $this->issueRepository->stateIssuePause($this->issue->getId());
+        if (!empty($issue)) {
+            $this->setState($issue->getState());
+        }
+    }
 
-            return $issue;
-        } catch (\Exception $ex) {
+    public function issueContinue()
+    {
+        $issue = $this->issueRepository->stateIssueContinue($this->issue->getId());
+        if (!empty($issue)) {
+            $time = $this->getCalculatedTimeForIssue($issue);
+            $this->setTime($time);
+            $this->setState($issue->getState());
+        }
+    }
 
-            $this->manager->getConnection()->rollBack();
-
-            return null;
+    public function issueStop()
+    {
+        $description = $this->getDescription();
+        if (empty($description)) {
+            $this->setError(self::ERROR_DESCRIPTION_NOT_FOUND);
+        } else {
+            $this->issueRepository->stateIssueStop($this->issue->getId(), $description, $this->getTime());
+            $this->setTime(null);
+            $this->setDescription(null);
+            $this->setState(null);
         }
     }
 
     /**
-     * Set state Stop
-     * 
-     * @param int $id
-     * @param string $description
-     * @return Issue|null
+     * Set time.
+     *
+     * @param int $time
+     *
+     * @return Issue
      */
-    public function stateIssueStop(int $id, string $description)
+    public function setTime($time)
     {
+        $this->time = $time;
 
-        $dateTime = $this->getCurrentDateTIme();
-
-        try {
-
-            $issue = $this->manager->getRepository('AppBundle:Issue')->find($id);
-            $totalTime = $this->getCalculatedTimeForIssue($issue);
-            $issue->setState(self::STATE_END);
-            $issue->setDescription($description);
-            $issue->setEnd($dateTime);
-            $issue->setTotalTime($totalTime);
-            $this->manager->flush();
-
-            return $issue;
-        } catch (\Exception $ex) {
-
-            return null;
-        }
-    }
-
-    /**
-     * 
-     * Get total breaks time
-     * 
-     * @param int $issueId
-     * @return type
-     */
-    public function getBreaksTimeTotal(int $issueId)
-    {
-        $sql = "SELECT sum(UNIX_TIMESTAMP(end)-UNIX_TIMESTAMP(begin)) as breaks_total_time FROM breaks WHERE issue_id = :issueId";
-
-        $queryBuilder = $this->manager
-            ->getConnection()
-            ->prepare($sql)
-        ;
-        $queryBuilder->execute(array('issueId' => $issueId));
-
-        $result = $queryBuilder->fetch();
-
-        if (!empty($result['breaks_total_time'])) {
-            return $result['breaks_total_time'];
-        }
-
-        return null;
+        return $this;
     }
 
     /**
@@ -222,9 +106,117 @@ class IssueState
      */
     public function getCalculatedTimeForIssue(Issue $issue)
     {
+        $breaksRepository = $this->manager->getRepository('AppBundle:Breaks');
+
         $timeBegin = $issue->getBegin()->getTimestamp();
-        $breaksTotalTime = $this->getBreaksTimeTotal($issue->getId());
-        $time = time() - $timeBegin - $breaksTotalTime;
+        $breaksTotalTime = $breaksRepository->getBreaksTimeTotal($issue->getId());
+        $time = $this->getCurrentDateTime()->getTimestamp() - $timeBegin - $breaksTotalTime;
         return $time;
+    }
+
+    /**
+     * Get time.
+     *
+     * @return int
+     */
+    public function getTime()
+    {
+        if (!empty($this->issue)) {
+            $this->time = $this->getCalculatedTimeForIssue($this->issue);
+
+            return $this->time;
+        } else {
+
+            return null;
+        }
+    }
+
+    /**
+     * Set desciption.
+     *
+     * @param string|null $description
+     *
+     * @return Issue
+     */
+    public function setDescription($description = null)
+    {
+        $this->description = $description;
+
+        return $this;
+    }
+
+    /**
+     * Get desciption.
+     *
+     * @return string|null
+     */
+    public function getDescription()
+    {
+        if (!empty($this->description)) {
+
+            return $this->description;
+        }
+        if (!empty($this->issue)) {
+            $this->description = $this->issue->getDescription();
+
+            return $this->description;
+        } else {
+
+            return null;
+        }
+    }
+
+    /**
+     * Set state.
+     *
+     * @param int $state
+     *
+     * @return Issue
+     */
+    public function setState($state)
+    {
+        $this->state = $state;
+
+        return $this;
+    }
+
+    /**
+     * Get state.
+     *
+     * @return int
+     */
+    public function getState()
+    {
+        if (!empty($this->issue)) {
+
+            return $this->issue->getState();
+        } else {
+
+            return null;
+        }
+    }
+
+    /**
+     * Set error.
+     *
+     * @param int $error
+     *
+     * @return Issue
+     */
+    public function setError($error)
+    {
+        $this->error = $error;
+
+        return $this;
+    }
+
+    /**
+     * Get error.
+     *
+     * @return int
+     */
+    public function getError()
+    {
+        return $this->error;
     }
 }

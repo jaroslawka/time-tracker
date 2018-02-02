@@ -5,6 +5,7 @@
  * and open the template in the editor.
  */
 namespace AppBundle\Model;
+
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 
 /**
@@ -14,14 +15,15 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
  */
 class User
 {
-    
+
     private $user;
 
     public function __construct(TokenStorage $tokenStorage)
     {
         $this->user = $tokenStorage->getToken()->getUser();
     }
-     /**
+
+    /**
      * Get current logged user id
      * 
      * @return int

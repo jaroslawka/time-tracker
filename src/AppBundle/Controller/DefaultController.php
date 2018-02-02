@@ -13,31 +13,18 @@ class DefaultController extends Controller
      */
     public function indexAction(Request $request)
     {
-        
-        $IssueState = $this->get('app.model.issue_state');
-        $user = $this->get('app.model.user');
-        
-        $userId = $user->getLoggedUserId();
-        $time = $request->get('time');
-        $state = $request->get('state');
-        $description = $request->get('description');
+
         $error = $request->get('error');
-
-        $issue = $IssueState->getIssueInProgressOrPaused($userId);
-
-        if (!empty($issue)) {
-            $time = $IssueState->getCalculatedTimeForIssue($issue);
-            $state = $issue->getState();
-            if(!$description){
-                $description = $issue->getDescription();
-            }
+        $issueState = $this->get('app.model.issue_state');
+        if (!$error) {
+            $issueState->getError();
         }
 
         return $this->render('default/index.html.twig', [
                 'base_dir' => realpath($this->getParameter('kernel.project_dir')) . DIRECTORY_SEPARATOR,
-                'time' => $time,
-                'state' => $state,
-                'description' => $description,
+                'time' => $issueState->getTime(),
+                'state' => $issueState->getState(),
+                'description' => $issueState->getDescription(),
                 'error' => $error
         ]);
     }

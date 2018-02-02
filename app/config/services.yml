@@ -31,7 +31,7 @@ services:
 
     app.model.issue_state:
         class: AppBundle\Model\IssueState
-        arguments: ['@doctrine.orm.entity_manager']
+        arguments: ['@doctrine.orm.entity_manager', '@app.model.user']
         public: true
         
     app.model.grid:

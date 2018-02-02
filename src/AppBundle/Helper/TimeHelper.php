@@ -1,13 +1,16 @@
 <?php
 namespace AppBundle\Helper;
+
+use DateTime;
+
 /**
- * Issue Helper
+ * Time Helper
  *
  */
-trait IssueHelper
+trait TimeHelper
 {
-    
-     /**
+
+    /**
      * Get Current DateTime
      * @return DateTime
      */
@@ -15,8 +18,8 @@ trait IssueHelper
     {
         return new DateTime(date('Y-m-d H:i:s'));
     }
-    
-     /**
+
+    /**
      * 
      * @param int $time
      * @return string
